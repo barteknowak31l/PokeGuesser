@@ -1,4 +1,2 @@
-
 mysql:
-    type: mysql:10.8
-
+  type: mysql:10.6
