@@ -42,6 +42,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function __construct()
     {
         $this->Pokemons = new ArrayCollection();
+        $this->generation = 1;
     }
 
     public function getId(): ?int
