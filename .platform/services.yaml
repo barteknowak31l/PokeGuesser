@@ -1,4 +1,4 @@
-services:
+database:
   type: mysql:10.11
   disk: 256
   configuration:
