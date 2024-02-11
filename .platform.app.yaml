@@ -45,6 +45,9 @@ mounts:
     "/var": { source: local, source_path: var }
     
 
+relationships:
+    database: mysqldb: mysql
+
 hooks:
     build: |
         set -x -e
