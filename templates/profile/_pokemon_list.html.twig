@@ -1,0 +1,7 @@
+<div class="flex flex-wrap -mx-4">
+  {% for pokemon in pokemons %}
+  <div class="w-full md:w-1/3 px-4 mb-4">
+    {{ include("profile/_pokemon.html.twig", { pokemon: pokemon }) }}
+  </div>
+  {% endfor %}
+</div>

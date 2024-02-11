@@ -1,0 +1,7 @@
+<div class="flex mr-1 ml-1">
+  <div class="border border-b border-gray-800 dark:border-gray-600"></div>
+  <div class="ml-1 mr-1 {% if gen == currentGen %}text-violet-600{%endif%}">
+    <a href="{{ path(link, { generation: gen }) }}">Gen {{ gen }}</a>
+  </div>
+  <div class="border border-b border-gray-800 dark:border-gray-600"></div>
+</div>
