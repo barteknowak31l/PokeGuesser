@@ -57,4 +57,4 @@ hooks:
     symfony-deploy
 
 relationships:
-  database: "mariadb:mysql"
+  db: "mariadb:mysql"
