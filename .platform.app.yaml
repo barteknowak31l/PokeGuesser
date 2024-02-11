@@ -43,9 +43,6 @@ workers:
 mounts:
   "/var": { source: local, source_path: var }
 
-relationships:
-  database: "mysql:10.11"
-
 hooks:
   build: |
     set -x -e
