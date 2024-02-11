@@ -1,0 +1,14 @@
+{% extends 'base.html.twig' %} {% block title %}Your Profile{% endblock %} {%
+block body %}
+
+<div class="text-center text-3xl mb-4 text-gray-600 dark:text-gray-400">
+  Current score: {{ app.user.pokemons.count }}
+</div>
+
+<div>
+  {{
+    include("profile/_pokemon_list.html.twig", { pokemons: app.user.pokemons })
+  }}
+</div>
+
+{% endblock %}

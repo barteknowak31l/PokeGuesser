@@ -1,0 +1,73 @@
+<div class="w-full mx-auto">
+  <form method="post">
+    {% if error %}
+    <div
+      class="rounded-md p-2 border-red-300 bg-red-50 border dark:border-red-600 dark:bg-red-700 dark:text-white mb-4"
+    >
+      {{ error.messageKey|trans(error.messageData, 'security') }}
+    </div>
+    {% endif %}
+    <div
+      class="text-center text-3xl text-gray-400 dark:text-gray-200 w-full mx-auto mb-8"
+    >
+      Please sign in
+    </div>
+    <div class="flex items-center">
+      <label
+        class="block text-lg text-gray-600 dark:text-gray-400"
+        for="username"
+        >Email</label
+      >
+      <input
+        type="email"
+        value="{{ last_username }}"
+        name="_username"
+        id="username"
+        class="block w-full shadow-sm border-gray dark:border-transparent dark:text-gray-800 rounded-md border p-2 mt-1 mb-2 ml-10"
+        autocomplete="email"
+        required
+        autofocus
+      />
+    </div>
+
+    <div class="flex items-center">
+      <label
+        class="block text-lg text-gray-600 dark:text-gray-400"
+        for="password"
+        >Password</label
+      >
+      <input
+        type="password"
+        name="_password"
+        id="password"
+        class="block w-full shadow-sm border-gray dark:border-transparent dark:text-gray-800 rounded-md border p-2 mt-1 mb-2 ml-2"
+        autocomplete="current-password"
+        required
+      />
+
+      <input
+        type="hidden"
+        name="_csrf_token"
+        value="{{ csrf_token('authenticate') }}"
+      />
+    </div>
+
+    <button
+      class="block w-full shadow-sm border-transparent bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400 text-white rounded-md border p-2 mt-4 mb-2"
+      type="submit"
+    >
+      Sign in
+    </button>
+
+    <input
+      type="hidden"
+      name="_target_path"
+      value="{{ path('app_after_login') }}"
+    />
+  </form>
+
+  <div class="mt-2 text-center text-gray-600 dark:text-gray-400">
+    Don't have an account?
+    <a href="{{ path('app_register') }}">Register here</a>
+  </div>
+</div>

@@ -1,0 +1,11 @@
+{% extends 'base.html.twig' %} {% block title %}PokeGuess!{% endblock %} {%
+block body %} {% for message in app.flashes('success') %}
+<div
+  class="rounded-md p-2 border-green-300 bg-green-50 border dark:border-green-600 dark:bg-green-700 dark:text-white mb-4"
+>
+  {{ message }}
+</div>
+{%endfor%}
+{{ include("hello/_game.html.twig", { pokemon: pokemon }) }}
+
+{% endblock %}

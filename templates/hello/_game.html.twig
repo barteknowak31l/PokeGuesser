@@ -1,0 +1,36 @@
+<div
+  class="mx-auto rounded-md bg-violet-900 m-6 p-4 text-gray-600 dark:text-gray-400"
+>
+  <div class="flex justify-center items-center">
+    <img
+      src="{{ pokemon.spriteUrl }}"
+      width="256"
+      height="256"
+      class="border-gray-600 border"
+    />
+  </div>
+
+  <div class="flex justify-center items-center">
+    {% for letter in hiddenName|split('') %}
+    {{ include("hello/_blankLetter.html.twig", { letter: letter }) }}
+    {%endfor%}
+  </div>
+
+  <div class="flex items-center justify-center mt-2">
+    Types:
+
+    {{ pokemon.type1 }}
+
+    {% if pokemon.type2 %}
+    {{ pokemon.type2 }}
+    {%endif%}
+  </div>
+
+  <div>
+    {{
+      include("hello/_pokemon_form.html.twig", {
+        form: form
+      })
+    }}
+  </div>
+</div>

@@ -1,0 +1,34 @@
+<div class="flex items-center justify-center">
+  <div class="text-3xl">
+    <a href="{{ path('app_hello') }}" class="text-gray-400 dark:text-gray-200"
+      >Poke Guesser</a
+    >
+  </div>
+</div>
+
+{% if app.user %}
+<div class="w-full text-right">
+  <a
+    href="{{ path('app_profile') }}"
+    class="text-sm text-gray-400 dark:text-gray-200"
+    >Profile</a
+  >
+  <a
+    href="{{ path('app_logout') }}"
+    class="text-sm text-gray-400 dark:text-gray-200 ml-4"
+    >Logout</a
+  >
+</div>
+{% else %}
+<div class="w-full text-right">
+  <a
+    href="{{ path('app_login') }}"
+    class="text-sm text-gray-400 dark:text-gray-200"
+    >Login</a
+  >
+</div>
+{% endif %}
+
+<div
+  class="border border-b border-gray-800 dark:border-gray-600 w-full mb-6"
+></div>
