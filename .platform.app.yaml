@@ -43,7 +43,8 @@ workers:
 mounts:
   "/var": { source: local, source_path: var }
 
-relationships: mysqldb:mysql
+relationships:
+  database: mysqldb:mysql
 
 hooks:
   build: |
