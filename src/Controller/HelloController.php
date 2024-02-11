@@ -7,10 +7,12 @@ use App\Entity\User;
 use GuzzleHttp\Client;
 use App\Entity\Pokemon;
 use App\Form\PokemonType;
+use App\Entity\Generation;
+use App\Form\GenerationType;
 use App\Repository\PokemonRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\Common\Collections\Collection;
 
+use Doctrine\Common\Collections\Collection;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -20,15 +22,17 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 class HelloController extends AbstractController
 {
 
-    private $SHOW_AFTER_X_BAD_ANSWER = 2;
+    // how many bad guesses until next letter is uncovered?
+    private $SHOW_AFTER_X_BAD_ANSWER = 1;
 
-    #[Route('/hello/{randomId?1}', name: 'app_hello')]
+    #[Route('/hello/{generation?1}/{randomId?1}', name: 'app_hello')]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function index(
         EntityManagerInterface $em,
         PokemonRepository $pokemons,
         Request $request,
-        int $randomId
+        int $randomId,
+        int $generation
     ): Response {
 
 
@@ -37,14 +41,18 @@ class HelloController extends AbstractController
          */
         $user = $this->getUser();
 
+
+        // save user generation
+        if ($user->getGeneration() !== $generation) {
+            $user->setGeneration($generation);
+            $em->persist($user);
+            $em->flush();
+        }
+
+
         // get bad attempt (number of concurrent bad guesses) counter
         $badGuessStreak = $request->getSession()->get('badGuessStreak', 0);
 
-        // //fetch last id if not guessed already
-        // $lastId = $request->query->get('randomId');
-        // if (null !== $lastId) {
-        //     $randomId = $lastId;
-        // }
 
 
         // if user got there any other way than a redirect
@@ -100,7 +108,7 @@ class HelloController extends AbstractController
 
 
             // resolve generation:
-            $generation = $this->resolveGenerationFromId($id);
+            $pkmnGeneration = $this->resolveGenerationFromId($id);
 
             // we can create a new Pokemon instance now
             $pokemon = new Pokemon();
@@ -108,7 +116,7 @@ class HelloController extends AbstractController
             $pokemon->setName($name);
             $pokemon->setType1($type1);
             $pokemon->setType2($type2);
-            $pokemon->setGeneration($generation);
+            $pokemon->setGeneration($pkmnGeneration);
             $pokemon->setSpriteUrl($spriteUrl);
 
             // and serialize it
@@ -122,9 +130,10 @@ class HelloController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+
+
+
             // check if answer is correct
-
-
             $answerValue = $_POST['pokemonType']['answer'];
             $otherPokemon = $form->getData();
 
@@ -136,16 +145,16 @@ class HelloController extends AbstractController
                 $user->addPokemon($otherPokemon);
                 $em->persist($user);
                 $em->flush();
-                $randomId = $this->getRandomId($user->getPokemons());
+                $randomId = $this->getRandomId($user->getPokemons(), $user->getGeneration());
                 $request->getSession()->set('badGuessStreak', 0);
-                return $this->redirectToRoute('app_hello', ['randomId' => $randomId]);
+                return $this->redirectToRoute('app_hello', ['randomId' => $randomId,  'generation' => $user->getGeneration()]);
             } else {
                 // wrong answer
                 $this->addFlash('failure', "Wrong Answer!");
                 $randomId = $otherPokemon->getId();
                 $request->getSession()->set('badGuessStreak', $badGuessStreak + 1);
 
-                return $this->redirectToRoute('app_hello', ['randomId' => $randomId]);
+                return $this->redirectToRoute('app_hello', ['randomId' => $randomId,  'generation' => $user->getGeneration()]);
             }
         }
 
@@ -161,11 +170,51 @@ class HelloController extends AbstractController
     }
 
 
-    private function getRandomId(Collection $pokemons): int
+    private function getRandomId(Collection $pokemons, int $generation): int
     {
+        $min = 1;
+        $max = 1025;
+
+        if ($generation === 1) {
+            $min = 1;
+            $max = 151;
+        }
+        if ($generation === 2) {
+            $min = 152;
+            $max = 251;
+        }
+        if ($generation === 3) {
+            $min = 252;
+            $max = 386;
+        }
+        if ($generation === 4) {
+            $min = 387;
+            $max = 493;
+        }
+        if ($generation === 5) {
+            $min = 494;
+            $max = 649;
+        }
+        if ($generation === 6) {
+            $min = 650;
+            $max = 721;
+        }
+        if ($generation === 7) {
+            $min = 722;
+            $max = 809;
+        }
+        if ($generation === 8) {
+            $min = 809;
+            $max = 905;
+        }
+        if ($generation === 8) {
+            $min = 906;
+            $max = 1025;
+        }
+
         $repeat = true;
         while ($repeat) {
-            $randomId = random_int(1, 1025);
+            $randomId = random_int($min, $max);
             $repeat = false;
             foreach ($pokemons as $pkmn) {
                 if ($pkmn->getId() === $randomId) {
@@ -178,18 +227,25 @@ class HelloController extends AbstractController
         return $randomId;
     }
 
-    #[Route('/afterLogin', name: 'app_after_login')]
+    #[Route('/afterLogin/{generation?1}', name: 'app_after_login')]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    public function afterLogin(): Response
+    public function afterLogin(EntityManagerInterface $em, int $generation): Response
     {
         /**
          * @var User $user
          */
         $user = $this->getUser();
         $pokemons = $user->getPokemons();
-        $randomId = $this->getRandomId($pokemons);
+        $user->setGeneration($generation);
+        $em->persist($user);
+        $em->flush();
 
-        return $this->redirectToRoute('app_hello', ['randomId' => $randomId]);
+        $randomId = $this->getRandomId($pokemons, $generation);
+
+        return $this->redirectToRoute('app_hello', [
+            'randomId' => $randomId,
+            'generation' => $user->getGeneration()
+        ]);
     }
 
     private function checkIfIdWasGuessed(Collection $pokemons, int $id): bool

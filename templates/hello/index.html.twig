@@ -6,6 +6,14 @@ block body %} {% for message in app.flashes('success') %}
   {{ message }}
 </div>
 {%endfor%}
-{{ include("hello/_game.html.twig", { pokemon: pokemon }) }}
+
+{{ include("shared/_generation_bar.html.twig", { link: "app_after_login" }) }}
+
+{{
+  include("hello/_game.html.twig", {
+    pokemon: pokemon,
+    form: form
+  })
+}}
 
 {% endblock %}

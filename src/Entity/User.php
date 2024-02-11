@@ -35,6 +35,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\ManyToMany(targetEntity: Pokemon::class)]
     private Collection $Pokemons;
 
+    #[ORM\Column]
+    private ?int $generation = null;
+
 
     public function __construct()
     {
@@ -131,6 +134,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function removePokemon(Pokemon $pokemon): static
     {
         $this->Pokemons->removeElement($pokemon);
+
+        return $this;
+    }
+
+    public function getGeneration(): ?int
+    {
+        return $this->generation;
+    }
+
+    public function setGeneration(int $generation): static
+    {
+        $this->generation = $generation;
 
         return $this;
     }
