@@ -10,6 +10,7 @@ use App\Form\PokemonType;
 use App\Entity\Generation;
 use App\Form\GenerationType;
 use App\Repository\PokemonRepository;
+use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 use Doctrine\Common\Collections\Collection;
@@ -61,7 +62,6 @@ class HelloController extends AbstractController
             $badGuessStreak = 0;
             $request->getSession()->set('badGuessStreak', 0);
         }
-
 
         // check if this pokemon is already in our database 
         $pokemon = $pokemons->find($randomId);
@@ -129,12 +129,19 @@ class HelloController extends AbstractController
         $form = $this->createForm(PokemonType::class, $pokemon);
         $form->handleRequest($request);
 
+        $userGeneration = $user->getGeneration();
+        $userPokemons = $user->getPokemonsByGeneration($userGeneration);
+        if (!$this->checkIfAllWereGuessed($userPokemons, $userGeneration)) {
+            return $this->redirectToRoute('app_all_were_guessed', ['generation' => $userGeneration]);
+        }
+
+
         if ($form->isSubmitted() && $form->isValid()) {
 
 
 
             // check if answer is correct
-            $answerValue = $_POST['pokemonType']['answer'];
+            $answerValue = strtolower($_POST['pokemonType']['answer']);
             $otherPokemon = $form->getData();
 
             // correct answer
@@ -248,6 +255,21 @@ class HelloController extends AbstractController
         ]);
     }
 
+
+    #[Route('/allWereGuessed/{generation?1}}', name: 'app_all_were_guessed')]
+    #[IsGranted('IS_AUTHENTICATED_FULLY')]
+    public function allWereGuessed(EntityManagerInterface $em, int $generation): Response
+    {
+        /**
+         * @var User $user
+         */
+        $user = $this->getUser();
+        return $this->render('hello/all_were_guessed.html.twig', [
+            'generation' => $user->getGeneration()
+        ]);
+    }
+
+
     private function checkIfIdWasGuessed(Collection $pokemons, int $id): bool
     {
         foreach ($pokemons as $pkmn) {
@@ -297,5 +319,49 @@ class HelloController extends AbstractController
         } else {
             return 9;
         }
+    }
+
+
+    private function checkIfAllWereGuessed(Collection $pokemons, int $generation): bool
+    {
+        $count = $pokemons->count();
+
+        if ($generation === 1 && $count >= 151) {
+            return false;
+        }
+
+        if ($generation === 2 && $count >= 100) {
+            return false;
+        }
+
+        if ($generation === 3 && $count >= 135) {
+            return false;
+        }
+
+        if ($generation === 4 && $count >= 107) {
+            return false;
+        }
+
+        if ($generation === 5 && $count >= 156) {
+            return false;
+        }
+
+        if ($generation === 6 && $count >= 72) {
+            return false;
+        }
+
+        if ($generation === 7 && $count >= 88) {
+            return false;
+        }
+
+        if ($generation === 8 && $count >= 96) {
+            return false;
+        }
+
+        if ($generation === 9 && $count >= 120) {
+            return false;
+        }
+
+        return true;
     }
 }

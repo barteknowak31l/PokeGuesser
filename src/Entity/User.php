@@ -150,4 +150,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
         return $this;
     }
+
+
+    public function getPokemonsByGeneration($gen): Collection
+    {
+        return $this->Pokemons->filter(function (Pokemon $pkmn) use ($gen) {
+            return $pkmn->getGeneration() === $gen;
+        });
+    }
 }
