@@ -96,7 +96,8 @@ class HelloController extends AbstractController
 
             // value from _POST table of field 'answer' from a from ('answer' is not mapped to Pokemon class)
             $answerValue = strtolower($_POST['pokemonType']['answer']);
-            $otherPokemon = $form->getData();
+            $otherPokemonId = $form->getData()->getId('id');
+            $otherPokemon = $pokemons->find($otherPokemonId);
 
             // correct answer
             if ($answerValue === $otherPokemon->getName()) {
