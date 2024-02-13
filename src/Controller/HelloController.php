@@ -24,7 +24,9 @@ class HelloController extends AbstractController
 {
 
     // how many bad guesses until next letter is uncovered?
-    private $SHOW_AFTER_X_BAD_ANSWER = 1;
+    private const SHOW_AFTER_X_BAD_ANSWER = 1;
+    private const ALL_WERE_GUESSED_CODE = -2;
+
 
     #[Route('/hello/{generation?1}/{randomId?1}', name: 'app_hello')]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
@@ -60,7 +62,7 @@ class HelloController extends AbstractController
         // we must clear bad guess streak
         if ($request->isMethod('GET') && !$request->headers->has('referer')) {
             $badGuessStreak = 0;
-            $request->getSession()->set('badGuessStreak', 0);
+            $this->clearBadStreak($request);
         }
 
         // check if this pokemon is already in our database 
@@ -131,7 +133,7 @@ class HelloController extends AbstractController
 
         $userGeneration = $user->getGeneration();
         $userPokemons = $user->getPokemonsByGeneration($userGeneration);
-        if (!$this->checkIfAllWereGuessed($userPokemons, $userGeneration)) {
+        if ($this->checkIfAllWereGuessed($userPokemons, $userGeneration)) {
             return $this->redirectToRoute('app_all_were_guessed', ['generation' => $userGeneration]);
         }
 
@@ -152,8 +154,10 @@ class HelloController extends AbstractController
                 $user->addPokemon($otherPokemon);
                 $em->persist($user);
                 $em->flush();
-                $randomId = $this->getRandomId($user->getPokemons(), $user->getGeneration());
-                $request->getSession()->set('badGuessStreak', 0);
+                $randomId = $this->getRandomId($user->getPokemons(), $user->getGeneration(), $request);
+                if ($randomId === HelloController::ALL_WERE_GUESSED_CODE) {
+                    return $this->redirectToRoute('app_all_were_guessed', ['generation' => $userGeneration]);
+                }
                 return $this->redirectToRoute('app_hello', ['randomId' => $randomId,  'generation' => $user->getGeneration()]);
             } else {
                 // wrong answer
@@ -177,10 +181,24 @@ class HelloController extends AbstractController
     }
 
 
-    private function getRandomId(Collection $pokemons, int $generation): int
+    private function clearBadStreak(Request $request): void
     {
+        $request->getSession()->set('badGuessStreak', 0);
+    }
+
+    private function getRandomId(Collection $pokemons, int $generation, Request $request): int
+    {
+
+        $this->clearBadStreak($request);
+
         $min = 1;
         $max = 1025;
+
+
+
+        if ($this->checkIfAllWereGuessed($pokemons, $generation)) {
+            return HelloController::ALL_WERE_GUESSED_CODE;
+        }
 
         if ($generation === 1) {
             $min = 1;
@@ -214,7 +232,7 @@ class HelloController extends AbstractController
             $min = 809;
             $max = 905;
         }
-        if ($generation === 8) {
+        if ($generation === 9) {
             $min = 906;
             $max = 1025;
         }
@@ -236,18 +254,21 @@ class HelloController extends AbstractController
 
     #[Route('/afterLogin/{generation?1}', name: 'app_after_login')]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    public function afterLogin(EntityManagerInterface $em, int $generation): Response
+    public function afterLogin(EntityManagerInterface $em, Request $request, int $generation): Response
     {
         /**
          * @var User $user
          */
         $user = $this->getUser();
-        $pokemons = $user->getPokemons();
+        $pokemons = $user->getPokemonsByGeneration($generation);
         $user->setGeneration($generation);
         $em->persist($user);
         $em->flush();
 
-        $randomId = $this->getRandomId($pokemons, $generation);
+        $randomId = $this->getRandomId($pokemons, $generation, $request);
+        if ($randomId === HelloController::ALL_WERE_GUESSED_CODE) {
+            return $this->redirectToRoute('app_all_were_guessed', ['generation' => $generation]);
+        }
 
         return $this->redirectToRoute('app_hello', [
             'randomId' => $randomId,
@@ -283,7 +304,7 @@ class HelloController extends AbstractController
     private function prepareHiddenName(string $name, int $badGuessStreak): string
     {
         $length = strlen($name);
-        $showLetters = (int) ($badGuessStreak / $this->SHOW_AFTER_X_BAD_ANSWER);
+        $showLetters = (int) ($badGuessStreak / HelloController::SHOW_AFTER_X_BAD_ANSWER);
         if ($showLetters >= $length)
             return $name;
         else {
@@ -327,41 +348,41 @@ class HelloController extends AbstractController
         $count = $pokemons->count();
 
         if ($generation === 1 && $count >= 151) {
-            return false;
+            return true;
         }
 
         if ($generation === 2 && $count >= 100) {
-            return false;
+            return true;
         }
 
         if ($generation === 3 && $count >= 135) {
-            return false;
+            return true;
         }
 
         if ($generation === 4 && $count >= 107) {
-            return false;
+            return true;
         }
 
         if ($generation === 5 && $count >= 156) {
-            return false;
+            return true;
         }
 
         if ($generation === 6 && $count >= 72) {
-            return false;
+            return true;
         }
 
         if ($generation === 7 && $count >= 88) {
-            return false;
+            return true;
         }
 
         if ($generation === 8 && $count >= 96) {
-            return false;
+            return true;
         }
 
         if ($generation === 9 && $count >= 120) {
-            return false;
+            return true;
         }
 
-        return true;
+        return false;
     }
 }
