@@ -23,6 +23,10 @@ security:
       logout:
         path: app_logout
         target: app_login
+      json_login:
+        check_path: api_login
+        username_path: credentials.login
+        password_path: credentials.password
 
       # activate different ways to authenticate
       # https://symfony.com/doc/current/security.html#the-firewall

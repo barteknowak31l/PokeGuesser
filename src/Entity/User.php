@@ -17,6 +17,10 @@ use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 #[UniqueEntity(fields: ['email'], message: 'There is already an account with this email')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
+
+    public const ALL_WERE_GUESSED_CODE = -2;
+    public const LAST_ASKED_DEFAULT_VALUE = -1;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -39,6 +43,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column]
     private ?int $generation = null;
+
+    #[ORM\Column]
+    private ?int $lastAskedId = null;
 
 
     public function __construct()
@@ -222,7 +229,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
 
         if ($this->checkIfAllWereGuessed($pokemons)) {
-            return HelloController::ALL_WERE_GUESSED_CODE;
+            return User::ALL_WERE_GUESSED_CODE;
         }
 
         if ($this->generation === 1) {
@@ -317,5 +324,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             }
             return $resultName;
         }
+    }
+
+    public function getLastAskedId(): ?int
+    {
+        return $this->lastAskedId;
+    }
+
+    public function setLastAskedId(int $lastAskedId): static
+    {
+        $this->lastAskedId = $lastAskedId;
+
+        return $this;
     }
 }

@@ -25,7 +25,6 @@ class HelloController extends AbstractController
 
     // how many bad guesses until next letter is uncovered?
     public const SHOW_AFTER_X_BAD_ANSWER = 1;
-    public const ALL_WERE_GUESSED_CODE = -2;
 
 
     #[Route('/hello/{generation?1}/{randomId?1}', name: 'app_hello')]
@@ -111,7 +110,7 @@ class HelloController extends AbstractController
 
                 $request->getSession()->set('badGuessStreak', 0);
                 $randomId = $user->getRandomPokeIdThatWasNotGuessedBefore($userPokemons, $request);
-                if ($randomId === HelloController::ALL_WERE_GUESSED_CODE) {
+                if ($randomId === User::ALL_WERE_GUESSED_CODE) {
                     return $this->redirectToRoute('app_all_were_guessed', ['generation' => $userGeneration]);
                 }
 
@@ -153,7 +152,7 @@ class HelloController extends AbstractController
         $em->flush();
 
         $randomId = $user->getRandomPokeIdThatWasNotGuessedBefore($pokemons, $request);
-        if ($randomId === HelloController::ALL_WERE_GUESSED_CODE) {
+        if ($randomId === User::ALL_WERE_GUESSED_CODE) {
             return $this->redirectToRoute('app_all_were_guessed', ['generation' => $generation]);
         }
 
@@ -178,7 +177,7 @@ class HelloController extends AbstractController
     }
 
 
-    private function callPokeApi(EntityManagerInterface $em, int $randomId, User $user): Pokemon
+    public static function callPokeApi(EntityManagerInterface $em, int $randomId, User $user): Pokemon
     {
         $apiUrl = 'https://pokeapi.co/api/v2/pokemon/' . $randomId;
         $client = new Client();
