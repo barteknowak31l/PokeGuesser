@@ -154,7 +154,7 @@ class HelloController extends AbstractController
                 $user->addPokemon($otherPokemon);
                 $em->persist($user);
                 $em->flush();
-                $randomId = $this->getRandomId($user->getPokemons(), $user->getGeneration(), $request);
+                $randomId = $this->getRandomId($userPokemons, $userGeneration, $request);
                 if ($randomId === HelloController::ALL_WERE_GUESSED_CODE) {
                     return $this->redirectToRoute('app_all_were_guessed', ['generation' => $userGeneration]);
                 }
