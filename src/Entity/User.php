@@ -54,6 +54,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->Pokemons = new ArrayCollection();
         $this->generation = 1;
+        $this->lastAskedId = User::LAST_ASKED_DEFAULT_VALUE;
     }
 
     public function getId(): ?int

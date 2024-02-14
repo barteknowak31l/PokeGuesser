@@ -34,7 +34,7 @@ class ApiPokemonController extends AbstractController
 
 
 
-    #[Route('/api/pokemon/{generation<d+>?1}', name: 'app_api_pokemon', methods: ['GET'])]
+    #[Route('/api/pokemon/{generation<\d+>?1}', name: 'app_api_pokemon', methods: ['GET'])]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function getRandomPokemon(
         #[CurrentUser] User $user,
@@ -44,6 +44,7 @@ class ApiPokemonController extends AbstractController
     ): JsonResponse {
 
         $pokemons = $user->getPokemonsByGeneration($generation);
+        $user->setGeneration($generation);
         $randomId = $user->getRandomPokeIdThatWasNotGuessedBefore($pokemons);
 
         $message = $randomId === User::ALL_WERE_GUESSED_CODE ? ApiPokemonController::RESPONSE_ALL_WERE_GUESSED : ApiPokemonController::RESPONSE_OK;
@@ -79,6 +80,7 @@ class ApiPokemonController extends AbstractController
 
         return $this->json([
             'message' => $message,
+            'generation' => $generation,
             'response' =>  $randomId === User::ALL_WERE_GUESSED_CODE ? null : $response,
         ]);
     }
@@ -152,10 +154,6 @@ class ApiPokemonController extends AbstractController
     }
 
 
-    // TODO: 
-    //      endpoint for all pokemons
-    //      endpoint for pokemons by generation
-
     #[Route('/api/pokemon/all/{generation}', name: "app_api_pokemon_all", methods: ['GET'])]
     #[IsGranted("IS_AUTHENTICATED_FULLY")]
     public function getAllUserPokemons(#[CurrentUser] User $user, int $generation = null): JsonResponse
@@ -177,7 +175,4 @@ class ApiPokemonController extends AbstractController
             ]
         );
     }
-
-
-    // then...  FRONTEND BABY
 }
