@@ -11,9 +11,14 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
+use Symfony\Component\Serializer\Serializer as Serializer;
+use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
+use Symfony\Component\Serializer\Mapping\Loader\AttributeLoader;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Serializer\Mapping\Factory\ClassMetadataFactory;
 
 class ApiPokemonController extends AbstractController
 {
@@ -29,7 +34,7 @@ class ApiPokemonController extends AbstractController
 
 
 
-    #[Route('/api/pokemon/{generation?1}', name: 'app_api_pokemon', methods: ['GET'])]
+    #[Route('/api/pokemon/{generation<d+>?1}', name: 'app_api_pokemon', methods: ['GET'])]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function getRandomPokemon(
         #[CurrentUser] User $user,
@@ -150,4 +155,29 @@ class ApiPokemonController extends AbstractController
     // TODO: 
     //      endpoint for all pokemons
     //      endpoint for pokemons by generation
+
+    #[Route('/api/pokemon/all/{generation}', name: "app_api_pokemon_all", methods: ['GET'])]
+    #[IsGranted("IS_AUTHENTICATED_FULLY")]
+    public function getAllUserPokemons(#[CurrentUser] User $user, int $generation = null): JsonResponse
+    {
+
+        if (null !== $generation) {
+            return $this->json(
+                [
+                    'message' => 'ok',
+                    'list' => $user->getPokemonsByGeneration($generation)
+                ]
+            );
+        }
+
+        return $this->json(
+            [
+                'message' => 'ok',
+                'list' => $user->getPokemons()
+            ]
+        );
+    }
+
+
+    // then...  FRONTEND BABY
 }
