@@ -10,6 +10,7 @@ use App\Form\PokemonType;
 use App\Entity\Generation;
 use App\Form\GenerationType;
 use App\Repository\PokemonRepository;
+use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 use Doctrine\Common\Collections\Collection;
@@ -23,7 +24,8 @@ class HelloController extends AbstractController
 {
 
     // how many bad guesses until next letter is uncovered?
-    private $SHOW_AFTER_X_BAD_ANSWER = 1;
+    public const SHOW_AFTER_X_BAD_ANSWER = 1;
+
 
     #[Route('/hello/{generation?1}/{randomId?1}', name: 'app_hello')]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
@@ -50,18 +52,16 @@ class HelloController extends AbstractController
         }
 
 
-        // get bad attempt (number of concurrent bad guesses) counter
+        // get bad attempt counter (number of consecutive bad guesses)
         $badGuessStreak = $request->getSession()->get('badGuessStreak', 0);
 
 
-
-        // if user got there any other way than a redirect
+        // if user got there by any other way than a redirect
         // we must clear bad guess streak
         if ($request->isMethod('GET') && !$request->headers->has('referer')) {
             $badGuessStreak = 0;
             $request->getSession()->set('badGuessStreak', 0);
         }
-
 
         // check if this pokemon is already in our database 
         $pokemon = $pokemons->find($randomId);
@@ -71,96 +71,64 @@ class HelloController extends AbstractController
             // just send it to the form
 
         } else {
+
             // unfortunately, we need to call poke api
-            $apiUrl = 'https://pokeapi.co/api/v2/pokemon/' . $randomId;
-            $client = new Client();
-            $response = $client->get($apiUrl);
-
-            $apiData = $response->getBody()->getContents();
-
-            $data = json_decode($apiData, true);
-
-            // we need id, name, types, and sprite url
-            $id = null;
-            $name = null;
-            $type1 = null;
-            $type2 = null;
-            $spriteUrl = null;
-
-
-            if (isset($data['id'])) {
-                $id = $data['id'];
-            }
-
-            if (isset($data['name'])) {
-                $name = $data['name'];
-            }
-
-            if (isset($data['types'][0]['type']['name'])) {
-                $type1 = $data['types'][0]['type']['name'];
-            }
-            if (isset($data['types'][1]['type']['name'])) {
-                $type2 = $data['types'][1]['type']['name'];
-            }
-            if (isset($data['sprites']['front_default'])) {
-                $spriteUrl = $data['sprites']['front_default'];
-            }
-
-
-            // resolve generation:
-            $pkmnGeneration = $this->resolveGenerationFromId($id);
-
-            // we can create a new Pokemon instance now
-            $pokemon = new Pokemon();
-            $pokemon->setId($id);
-            $pokemon->setName($name);
-            $pokemon->setType1($type1);
-            $pokemon->setType2($type2);
-            $pokemon->setGeneration($pkmnGeneration);
-            $pokemon->setSpriteUrl($spriteUrl);
-
-            // and serialize it
-            $em->persist($pokemon);
-            $em->flush();
+            $pokemon = $this->callPokeApi($em, $randomId, $user);
         }
 
-        // create a pokemon form
-
+        // create and handle a pokemon form
         $form = $this->createForm(PokemonType::class, $pokemon);
         $form->handleRequest($request);
 
+        // get useful data required to further processing 
+        $userGeneration = $user->getGeneration();
+        $userPokemons = $user->getPokemonsByGeneration($userGeneration);
+
+        // when all pokemons from a given gen were guessed, show a special message
+        if ($user->checkIfAllWereGuessed($userPokemons)) {
+            return $this->redirectToRoute('app_all_were_guessed', ['generation' => $userGeneration]);
+        }
+
+
         if ($form->isSubmitted() && $form->isValid()) {
-
-
-
             // check if answer is correct
-            $answerValue = $_POST['pokemonType']['answer'];
-            $otherPokemon = $form->getData();
+
+            // value from _POST table of field 'answer' from a from ('answer' is not mapped to Pokemon class)
+            $answerValue = strtolower($_POST['pokemonType']['answer']);
+            $otherPokemonId = $form->getData()->getId('id');
+            $otherPokemon = $pokemons->find($otherPokemonId);
 
             // correct answer
             if ($answerValue === $otherPokemon->getName()) {
+
                 $this->addFlash('success', "Correct Answer!");
 
                 // add pokemon to this user
                 $user->addPokemon($otherPokemon);
                 $em->persist($user);
                 $em->flush();
-                $randomId = $this->getRandomId($user->getPokemons(), $user->getGeneration());
+
                 $request->getSession()->set('badGuessStreak', 0);
-                return $this->redirectToRoute('app_hello', ['randomId' => $randomId,  'generation' => $user->getGeneration()]);
+                $randomId = $user->getRandomPokeIdThatWasNotGuessedBefore($userPokemons, $request);
+                if ($randomId === User::ALL_WERE_GUESSED_CODE) {
+                    return $this->redirectToRoute('app_all_were_guessed', ['generation' => $userGeneration]);
+                }
+
+                return $this->redirectToRoute('app_hello', ['randomId' => $randomId,  'generation' => $userGeneration]);
             } else {
+
                 // wrong answer
                 $this->addFlash('failure', "Wrong Answer!");
                 $randomId = $otherPokemon->getId();
                 $request->getSession()->set('badGuessStreak', $badGuessStreak + 1);
 
-                return $this->redirectToRoute('app_hello', ['randomId' => $randomId,  'generation' => $user->getGeneration()]);
+                return $this->redirectToRoute('app_hello', ['randomId' => $randomId,  'generation' => $userGeneration]);
             }
         }
 
 
         // prepare hidden name for hint
-        $hiddenName = $this->prepareHiddenName($pokemon->getName(), $badGuessStreak);
+        $hiddenName = $user->createHiddenName($pokemon->getName(), $badGuessStreak);
 
         return $this->render('hello/index.html.twig', [
             'pokemon' => $pokemon,
@@ -170,77 +138,23 @@ class HelloController extends AbstractController
     }
 
 
-    private function getRandomId(Collection $pokemons, int $generation): int
-    {
-        $min = 1;
-        $max = 1025;
-
-        if ($generation === 1) {
-            $min = 1;
-            $max = 151;
-        }
-        if ($generation === 2) {
-            $min = 152;
-            $max = 251;
-        }
-        if ($generation === 3) {
-            $min = 252;
-            $max = 386;
-        }
-        if ($generation === 4) {
-            $min = 387;
-            $max = 493;
-        }
-        if ($generation === 5) {
-            $min = 494;
-            $max = 649;
-        }
-        if ($generation === 6) {
-            $min = 650;
-            $max = 721;
-        }
-        if ($generation === 7) {
-            $min = 722;
-            $max = 809;
-        }
-        if ($generation === 8) {
-            $min = 809;
-            $max = 905;
-        }
-        if ($generation === 8) {
-            $min = 906;
-            $max = 1025;
-        }
-
-        $repeat = true;
-        while ($repeat) {
-            $randomId = random_int($min, $max);
-            $repeat = false;
-            foreach ($pokemons as $pkmn) {
-                if ($pkmn->getId() === $randomId) {
-                    $repeat = true;
-                    break;
-                }
-            }
-        }
-
-        return $randomId;
-    }
-
     #[Route('/afterLogin/{generation?1}', name: 'app_after_login')]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    public function afterLogin(EntityManagerInterface $em, int $generation): Response
+    public function afterLogin(EntityManagerInterface $em, Request $request, int $generation): Response
     {
         /**
          * @var User $user
          */
         $user = $this->getUser();
-        $pokemons = $user->getPokemons();
+        $pokemons = $user->getPokemonsByGeneration($generation);
         $user->setGeneration($generation);
         $em->persist($user);
         $em->flush();
 
-        $randomId = $this->getRandomId($pokemons, $generation);
+        $randomId = $user->getRandomPokeIdThatWasNotGuessedBefore($pokemons, $request);
+        if ($randomId === User::ALL_WERE_GUESSED_CODE) {
+            return $this->redirectToRoute('app_all_were_guessed', ['generation' => $generation]);
+        }
 
         return $this->redirectToRoute('app_hello', [
             'randomId' => $randomId,
@@ -248,54 +162,75 @@ class HelloController extends AbstractController
         ]);
     }
 
-    private function checkIfIdWasGuessed(Collection $pokemons, int $id): bool
+
+    #[Route('/allWereGuessed/{generation?1}}', name: 'app_all_were_guessed')]
+    #[IsGranted('IS_AUTHENTICATED_FULLY')]
+    public function allWereGuessed(EntityManagerInterface $em, int $generation): Response
     {
-        foreach ($pokemons as $pkmn) {
-            if ($pkmn->getId() === $id) {
-                return true;
-            }
-        }
-        return false;
+        /**
+         * @var User $user
+         */
+        $user = $this->getUser();
+        return $this->render('hello/all_were_guessed.html.twig', [
+            'generation' => $user->getGeneration()
+        ]);
     }
 
-    private function prepareHiddenName(string $name, int $badGuessStreak): string
-    {
-        $length = strlen($name);
-        $showLetters = (int) ($badGuessStreak / $this->SHOW_AFTER_X_BAD_ANSWER);
-        if ($showLetters >= $length)
-            return $name;
-        else {
-            $resultName = '';
-            foreach (str_split($name) as $i => $char) {
-                if ($i >= $showLetters)
-                    $resultName .= '_';
-                else
-                    $resultName .= $char;
-            }
-            return $resultName;
-        }
-    }
 
-    private function resolveGenerationFromId(int $id): int
+    public static function callPokeApi(EntityManagerInterface $em, int $randomId, User $user): Pokemon
     {
-        if ($id < 152) {
-            return 1;
-        } else if ($id < 252) {
-            return 2;
-        } else if ($id < 387) {
-            return 3;
-        } else if ($id < 494) {
-            return 4;
-        } else if ($id < 650) {
-            return 5;
-        } else if ($id < 722) {
-            return 6;
-        } else if ($id < 810) {
-            return 7;
-        } else if ($id < 906) {
-            return 8;
-        } else {
-            return 9;
+        $apiUrl = 'https://pokeapi.co/api/v2/pokemon/' . $randomId;
+        $client = new Client();
+        $response = $client->get($apiUrl);
+
+        $apiData = $response->getBody()->getContents();
+
+        $data = json_decode($apiData, true);
+
+        // we need id, name, types, and sprite url
+        $id = null;
+        $name = null;
+        $type1 = null;
+        $type2 = null;
+        $spriteUrl = null;
+
+
+        if (isset($data['id'])) {
+            $id = $data['id'];
         }
+
+        if (isset($data['name'])) {
+            $name = $data['name'];
+        }
+
+        if (isset($data['types'][0]['type']['name'])) {
+            $type1 = $data['types'][0]['type']['name'];
+        }
+        if (isset($data['types'][1]['type']['name'])) {
+            $type2 = $data['types'][1]['type']['name'];
+        }
+        if (isset($data['sprites']['front_default'])) {
+            $spriteUrl = $data['sprites']['front_default'];
+        }
+
+
+        // resolve pokemon generation
+        $pkmnGeneration = $user->resolveGenerationFromId($id);
+
+        // we can create a new Pokemon instance now
+        $pokemon = new Pokemon();
+        $pokemon->setId($id);
+        $pokemon->setName($name);
+        $pokemon->setType1($type1);
+        $pokemon->setType2($type2);
+        $pokemon->setGeneration($pkmnGeneration);
+        $pokemon->setSpriteUrl($spriteUrl);
+
+        // and serialize it
+        $em->persist($pokemon);
+        $em->flush();
+
+
+        return $pokemon;
     }
 }

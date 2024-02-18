@@ -1,0 +1,10 @@
+{% extends 'base.html.twig' %} {% block title %}Poke Guesser{% endblock %} {%
+block body %}
+
+{{ include("shared/_generation_bar.html.twig", { link: "app_after_login" }) }}
+
+<div class="text-center text-xl mb-6 mt-4 text-gray-800 dark:text-gray-600">
+  Congratulations! You guessed them all! Check out other generations!
+</div>
+
+{% endblock %}

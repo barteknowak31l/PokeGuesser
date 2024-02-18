@@ -15,7 +15,7 @@ class PokemonType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
-            ->add('name', HiddenType::class)
+            ->add('id', HiddenType::class)
             ->add('type1', HiddenType::class)
             ->add('type2', HiddenType::class)
             ->add('spriteUrl', HiddenType::class)
